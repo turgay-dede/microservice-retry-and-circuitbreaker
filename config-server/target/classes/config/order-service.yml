@@ -1,0 +1,61 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: order-service
+
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connectTimeout: 2000
+            readTimeout: 2000
+management:
+  health:
+    circuitbreakers:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+
+resilience4j:
+  retry:
+    instances:
+      orderServiceRetry:
+        max-attempts: 3  # Toplamda 3 deneme yapılır (ilk çağrı + 2 retry)
+        wait-duration: 5s  # Her tekrar denemesi arasında 5 saniye beklenir
+        enable-exponential-backoff: true  # Üssel bekleme süresi aktif (örneğin: 5s, 10s, 20s gibi)
+        exponential-backoff-multiplier: 2  # Bekleme süresi çarpanı. İlk bekleme 5s, sonra 10s, sonra 20s olur
+        retry-exceptions:
+          - feign.FeignException
+          - feign.FeignException$InternalServerError
+          - feign.FeignException$ServiceUnavailable
+  #        ignore-exceptions:  # Bu exception türleri retry yapılmadan doğrudan fırlatılır (ignore edilir)
+#          - com.amrut.prabhu.IgnoreException
+
+  circuitbreaker:
+    circuit-breaker-aspect-order: 2  # Retry ve CB anotasyonlarının çalışma sırası. 1 = önce CB çalışır, sonra retry , 2 = önce retry çalışır, sonra CB
+    instances:
+      orderServiceCircuitBreaker:
+        registerHealthIndicator: true  # Health endpoint'ine CB sağlıklı mı gösterilsin (actuator /health altında görünür)
+        eventConsumerBufferSize: 3    # CB event'leri için buffer boyutu
+        minimumNumberOfCalls: 5        # En az 5 çağrı sonrası değerlendirme yapılır (başlangıçta CB çalışmaz)
+        wait-duration-in-open-state: 1m  # CB "OPEN" durumuna geçince 1 dakika boyunca istek alınmaz
+        permitted-number-of-calls-in-half-open-state: 3  # HALF_OPEN durumunda test için 3 istek gönderilir
+        sliding-window-type: count-based  # Sliding window çağrı sayısına göre takip edilir (zaman değil)
+        sliding-window-size: 5  # Son 5 çağrı üzerinden istatistik tutulur
+        minimum-number-of-calls: 5  # CB değerlendirme yapabilmesi için en az 5 çağrı yapılmış olmalı
+        slow-call-duration-threshold: 10s  # 10 saniyeden uzun süren çağrılar "yavaş çağrı" olarak işaretlenir
+        slow-call-rate-threshold: 60  # Yavaş çağrı oranı %60'ı geçerse CB hata gibi değerlendirir
+        failure-rate-threshold: 60  # Başarısız çağrı oranı %60’ı geçerse CB "OPEN" moda geçer
+logging:
+  level:
+    io.github.resilience4j.retry: DEBUG  # Retry işlemleri için detaylı loglar aktif
+    io.github.resilience4j.circuitbreaker: DEBUG  # CircuitBreaker işlemleri için detaylı loglar aktif
+
