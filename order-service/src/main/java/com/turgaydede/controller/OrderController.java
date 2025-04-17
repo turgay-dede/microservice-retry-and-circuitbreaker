@@ -22,4 +22,10 @@ public class OrderController {
         List<Order> orders = orderService.processOrder();
         return ResponseEntity.ok().body(orders);
     }
+
+    @GetMapping("/{orderId}")
+    public ResponseEntity<Order> getOrderById(@PathVariable String orderId) {
+        Order order = orderService.getOrderById(orderId);
+        return ResponseEntity.ok().body(order);
+    }
 }

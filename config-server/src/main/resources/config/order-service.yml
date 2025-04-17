@@ -25,6 +25,12 @@ management:
       show-details: always
 
 resilience4j:
+  ratelimiter:
+    instances:
+      orderServiceRateLimiter:
+        limit-for-period: 3           # Maksimum 3 istek...
+        limit-refresh-period: 10s     # ...her 10 saniyede bir
+        timeout-duration: 0           # izin alamazsa anında hata ver
   retry:
     instances:
       orderServiceRetry:
